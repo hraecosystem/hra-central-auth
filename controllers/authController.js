@@ -55,7 +55,7 @@ module.exports.registerUserCtrl = asyncHandler(async (req, res) => {
 
   const htmlTemplate = `
   <div style="font-family: Arial, sans-serif; line-height:1.5;">
-    <h2>Hello ${req.body.firstname + req.body.lastname || ""} 👋,</h2>
+    <h2>Hello ${req.body.firstname + " " + req.body.lastname || ""} 👋,</h2>
     <p>Here is your verification code:</p>
     <p style="font-size: 24px; font-weight: bold;">${otp}</p>
     <p>This code is valid for 10 minutes.</p>
@@ -296,22 +296,18 @@ module.exports.sendOtpVerificationEmailCtrl = asyncHandler(async (req, res) => {
   });
 });
 
-
 module.exports.saveDataFromAppCtrl = asyncHandler(async (req, res) => {
-
   try {
     const users = req.body.users;
-
-
     const createdUsers = [];
 
     for (const userData of users) {
       const exists = await User.findOne({ email: userData.email });
-      if (exists) continue; // Skip if user exists
+      if (exists) continue;
 
       const user = new User({
-        firstname: userData.username,
-        lastname: userData.username,
+        firstname: userData.firstname,
+        lastname: userData.firstname,
         phonenumber: userData.phonenumber,
         email: userData.email,
         password: userData.password, // already hashed
@@ -327,7 +323,6 @@ module.exports.saveDataFromAppCtrl = asyncHandler(async (req, res) => {
       });
 
       await verificationToken.save();
-
       createdUsers.push(user._id);
     }
 
@@ -341,5 +336,4 @@ module.exports.saveDataFromAppCtrl = asyncHandler(async (req, res) => {
       error: err.message,
     });
   }
-}
-);
+});

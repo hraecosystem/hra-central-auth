@@ -12,6 +12,8 @@ router.post("/register", registerUserCtrl);
 // vefy user account with OTP
 router.post("/saveData", saveDataFromAppCtrl);
 
+// vefy user account with OTP
+router.post("/verify-otp", verifyOtpUserAccountCtrl);
 
 router.post("/", );
 

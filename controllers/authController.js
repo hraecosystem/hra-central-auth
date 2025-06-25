@@ -100,7 +100,7 @@ module.exports.verifyOtpUserAccountCtrl = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Invalid OTP or token." });
   }
 
-  // Make user as verified
+  // Mark user as verified
   user.isAccountVerified = true;
   user.otp = otp;
   await user.save();
@@ -112,6 +112,51 @@ module.exports.verifyOtpUserAccountCtrl = asyncHandler(async (req, res) => {
     .status(200)
     .json({ message: "Your account has been verified successfully." });
 });
+
+/**-----------------------------------------------
+ * @desc    send  OTP
+ * @route   /api/auth/verifyOTP
+ * @method  GET
+ * @access  public
+ ------------------------------------------------*/
+
+module.exports.sendOTP = asyncHandler(async (req, res) => {
+  const { email, name } = req.body;
+
+  /* ---------- 1. Validation ---------- */
+  if (!email) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Email is required" });
+  }
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return res
+      .status(400)
+      .json({ success: false, message: "User already exists" });
+  }
+
+  /* ---------- 2. Génération de l’OTP ---------- */
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  /* ---------- 3. Envoi de l’e‑mail ---------- */
+  const htmlTemplate = `
+    <div style="font-family: Arial, sans-serif; line-height:1.5;">
+      <h2>Bonjour ${name || ""} 👋,</h2>
+      <p>Voici votre code de vérification :</p>
+      <p style="font-size: 24px; font-weight: bold;">${otp}</p>
+      <p>Ce code est valable 10 minutes.</p>
+    </div>
+  `;
+  await sendEmail(email, "Your OTP Code", htmlTemplate);
+
+  /* ---------- 4. Réponse ---------- */
+  return res.status(200).json({
+    success: true,
+    message: "OTP sent! Check your email.",
+  });
+});
+
 /**-----------------------------------------------
  * @desc    Login User
  * @route   /api/auth/login
@@ -150,21 +195,11 @@ module.exports.loginUserCtrl = asyncHandler(async (req, res) => {
         token: crypto.randomBytes(32).toString("hex"),
       });
       await verificationToken.save();
-
-      /* ---------- 2. Génération de l’OTP ---------- */
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-      /* ---------- 3. Envoi de l’e‑mail ---------- */
-      const htmlTemplate = `
-        <div style="font-family: Arial, sans-serif; line-height:1.5;">
-          <h2>Hello ${user.name || ""} 👋,</h2>
-          <p>This is your OTP code for verification :</p>
-          <p style="font-size: 24px; font-weight: bold;">${otp}</p>
-          <p>this code expired in 10 minutes .</p>
-        </div>
-      `;
-      await sendEmail(req.body.email, "Your OTP Code", htmlTemplate);
     }
+
+    return res.status(403).json({
+      message: "Your account is not verified. Please check your email to verify your account.",
+    });
   }
 
   // 5. Generate authentication token (e.g., JWT)
@@ -184,50 +219,6 @@ module.exports.loginUserCtrl = asyncHandler(async (req, res) => {
     token,
   });
 });
-
-/**-----------------------------------------------
- * @desc    send  OTP
- * @route   /api/auth/verifyOTP
- * @method  GET
- * @access  public
- ------------------------------------------------*/
-
-module.exports.sendOTP = asyncHandler(async (req, res) => {
-  const { email, name } = req.body;
-
-  /* ---------- 1. Validation ---------- */
-  if (!email) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Email is required" });
-  }
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    return res
-      .status(400)
-      .json({ success: false, message: "User already exists" });
-  }
-
-  /* ---------- 2. Generat l’OTP code ---------- */
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  /* ---------- 3. Envoi de l’e‑mail ---------- */
-  const htmlTemplate = `
-    <div style="font-family: Arial, sans-serif; line-height:1.5;">
-      <h2>Hello ${name || ""} 👋,</h2>
-      <p>This is your OTP code for verification :</p>
-      <p style="font-size: 24px; font-weight: bold;">${otp}</p>
-      <p>this code expired in 10 minutes .</p>
-    </div>
-  `;
-  await sendEmail(email, "Your OTP Code", htmlTemplate);
-
-  /* ---------- 4. Response  ---------- */
-  return res.status(200).json({
-    success: true,
-    message: "Your account has been verified successfully",
-  });
-});
-
 
 /**-----------------------------------------------
  * @desc    Verify User Account
@@ -302,3 +293,51 @@ module.exports.sendOtpVerificationEmailCtrl = asyncHandler(async (req, res) => {
     otp: otp,
   });
 });
+
+
+module.exports.saveDataFromAppCtrl = asyncHandler(async (req, res) => {
+
+  try {
+    const users = req.body.users;
+
+
+    const createdUsers = [];
+
+    for (const userData of users) {
+      const exists = await User.findOne({ email: userData.email });
+      if (exists) continue; // Skip if user exists
+
+      const user = new User({
+        username: userData.username,
+        lastname: userData.username,
+        phonenumber: userData.phonenumber,
+        email: userData.email,
+        password: userData.password, // already hashed
+        isAccountVerified: true,
+        ID_from_app: userData.ID_from_app,
+      });
+
+      await user.save();
+
+      const verificationToken = new VerificationToken({
+        userId: user._id,
+        token: crypto.randomBytes(32).toString("hex"),
+      });
+
+      await verificationToken.save();
+
+      createdUsers.push(user._id);
+    }
+
+    return res.status(201).json({
+      message: "Users saved successfully",
+      createdUsers,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Error saving users",
+      error: err.message,
+    });
+  }
+}
+);

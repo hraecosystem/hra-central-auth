@@ -15,7 +15,7 @@ connectToDb();
 const app = express();
 
 // Middlewares
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Security Headers (helmet)
 app.use(helmet());
@@ -47,7 +47,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Running The Server
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8001;
 app.listen(PORT, () =>
   console.log(
     `Server is running in ${process.env.NODE_ENV} mode on port ${PORT}`

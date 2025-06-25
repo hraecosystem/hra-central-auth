@@ -15,7 +15,7 @@ connectToDb();
 const app = express();
 
 // Middlewares
-app.use(express.json({ limit: '100mb' }));
+app.use(express.json({ limit: '60mb' }));
 
 // Security Headers (helmet)
 app.use(helmet());
@@ -38,6 +38,7 @@ app.use(cors({
 }));
 
 // Routes
+app.use("/", require("./routes/indexRoute"));
 app.use("/api/auth", require("./routes/authRoute"));
 app.use("/api/password",require("./routes/passwordRoute"));
 app.use("/api/auth-verification",require("./routes/link_appsRoute"));

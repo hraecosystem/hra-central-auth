@@ -35,7 +35,7 @@ module.exports.registerUserCtrl = asyncHandler(async (req, res) => {
 
   // Creating new User & save it toDB
   user = new User({
-    username: req.body.username,
+    firstname: req.body.firstname,
     lastname: req.body.lastname,
     phonenumber: req.body.phonenumber,
     email: req.body.email,
@@ -55,7 +55,7 @@ module.exports.registerUserCtrl = asyncHandler(async (req, res) => {
 
   const htmlTemplate = `
   <div style="font-family: Arial, sans-serif; line-height:1.5;">
-    <h2>Hello ${req.body.username + req.body.lastname || ""} 👋,</h2>
+    <h2>Hello ${req.body.firstname + req.body.lastname || ""} 👋,</h2>
     <p>Here is your verification code:</p>
     <p style="font-size: 24px; font-weight: bold;">${otp}</p>
     <p>This code is valid for 10 minutes.</p>
@@ -210,14 +210,14 @@ module.exports.loginUserCtrl = asyncHandler(async (req, res) => {
   // 6. Respond with user info and token
   res.status(200).json({
     message: "Login successful",
-    user: {
-      _id: user._id,
-      username: user.username,
-      lastname: user.lastname,
-      phonenumber: user.phonenumber,
-      email: user.email,
-      coins: 100
-    },
+    // user: {
+    //   _id: user._id,
+    //   firstname: user.firstname,
+    //   lastname: user.lastname,
+    //   phonenumber: user.phonenumber,
+    //   email: user.email,
+    //   coins: 100
+    // },
     token,
   });
 });
@@ -298,48 +298,49 @@ module.exports.sendOtpVerificationEmailCtrl = asyncHandler(async (req, res) => {
 
 
 module.exports.saveDataFromAppCtrl = asyncHandler(async (req, res) => {
-
   try {
     const users = req.body.users;
-
-
-    const createdUsers = [];
-
-    for (const userData of users) {
-      const exists = await User.findOne({ email: userData.email });
-      if (exists) continue; // Skip if user exists
-
-      const user = new User({
-        username: userData.username,
-        lastname: userData.username,
-        phonenumber: userData.phonenumber,
-        email: userData.email,
-        password: userData.password, // already hashed
-        isAccountVerified: true,
-        ID_from_app: userData.ID_from_app,
-      });
-
-      await user.save();
-
-      const verificationToken = new VerificationToken({
-        userId: user._id,
-        token: crypto.randomBytes(32).toString("hex"),
-      });
-
-      await verificationToken.save();
-
-      createdUsers.push(user._id);
+    if (!Array.isArray(users)) {
+      return res.status(400).json({ message: "Invalid input format." });
     }
 
-    return res.status(201).json({
-      message: "Users saved successfully",
-      createdUsers,
+    // Step 1: Find all existing emails at once
+    const emails = users.map(user => user.email);
+    const existingUsers = await User.find({ email: { $in: emails } }).select('email');
+    const existingEmails = new Set(existingUsers.map(u => u.email));
+
+    // Step 2: Filter out existing users
+    const newUsers = users.filter(user => !existingEmails.has(user.email));
+
+    // Step 3: Prepare bulk insert
+    const userDocs = newUsers.map(userData => ({
+      firstname: userData.firstname,
+      lastname: userData.firstname,
+      phonenumber: userData.phonenumber,
+      email: userData.email,
+      password: userData.password,
+      isAccountVerified: true,
+      ID_from_app: userData.ID_from_app,
+    }));
+
+    const insertedUsers = await User.insertMany(userDocs, { ordered: false });
+
+    // Step 4: Prepare verification tokens
+    const tokenDocs = insertedUsers.map(user => ({
+      userId: user._id,
+      token: crypto.randomBytes(32).toString("hex"),
+    }));
+
+    await VerificationToken.insertMany(tokenDocs, { ordered: false });
+
+    res.status(201).json({
+      message: 'Users saved successfully',
+      createdUsers: insertedUsers.map(u => u._id),
     });
   } catch (err) {
-    return res.status(500).json({
-      message: "Error saving users",
+    res.status(500).json({
+      message: 'Error saving users',
       error: err.message,
     });
   }
-}
-);
+});

@@ -15,7 +15,7 @@ connectToDb();
 const app = express();
 
 // Middlewares
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
 
 // Security Headers (helmet)
 app.use(helmet());

@@ -5,7 +5,7 @@ const passwordComplexity = require("joi-password-complexity");
 
 // User Schema
 const UserSchema = new mongoose.Schema({
-    username: {
+    firstname: {
         type: String,
         required: true,
         trim: true,
@@ -86,7 +86,7 @@ const User = mongoose.model("User", UserSchema);
 // Validate Register User
 function validateRegisterUser(obj) {
     const schema = Joi.object({
-        username: Joi.string().trim().min(2).max(100).required(),
+        firstname: Joi.string().trim().min(2).max(100).required(),
         lastname: Joi.string().trim().min(2).max(100).required(),
        
         // name_app: Joi.number().trim().min(1).required(),
@@ -109,7 +109,7 @@ function validateLoginUser(obj) {
 // Validate Update User
 function validateUpdateUser(obj) {
     const schema = Joi.object({
-        username: Joi.string().trim().min(2).max(100),
+        firstname: Joi.string().trim().min(2).max(100),
         password: passwordComplexity(),
         bio: Joi.string(),
     });
@@ -142,7 +142,7 @@ module.exports = {
 }
 
 // const schema = Joi.object({
-//     username: Joi.string().trim().min(2).max(100).messages({
+//     firstname: Joi.string().trim().min(2).max(100).messages({
 //         'any.required': 'الاسم مطلوب',
 //         'string.base': 'الاسم لازم يكون من نوع نص',
 //         'string.empty': 'رجاء ادخال الاسم',

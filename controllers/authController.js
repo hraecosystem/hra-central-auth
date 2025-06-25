@@ -298,49 +298,48 @@ module.exports.sendOtpVerificationEmailCtrl = asyncHandler(async (req, res) => {
 
 
 module.exports.saveDataFromAppCtrl = asyncHandler(async (req, res) => {
+
   try {
     const users = req.body.users;
-    if (!Array.isArray(users)) {
-      return res.status(400).json({ message: "Invalid input format." });
+
+
+    const createdUsers = [];
+
+    for (const userData of users) {
+      const exists = await User.findOne({ email: userData.email });
+      if (exists) continue; // Skip if user exists
+
+      const user = new User({
+        firstname: userData.username,
+        lastname: userData.username,
+        phonenumber: userData.phonenumber,
+        email: userData.email,
+        password: userData.password, // already hashed
+        isAccountVerified: true,
+        ID_from_app: userData.ID_from_app,
+      });
+
+      await user.save();
+
+      const verificationToken = new VerificationToken({
+        userId: user._id,
+        token: crypto.randomBytes(32).toString("hex"),
+      });
+
+      await verificationToken.save();
+
+      createdUsers.push(user._id);
     }
 
-    // Step 1: Find all existing emails at once
-    const emails = users.map(user => user.email);
-    const existingUsers = await User.find({ email: { $in: emails } }).select('email');
-    const existingEmails = new Set(existingUsers.map(u => u.email));
-
-    // Step 2: Filter out existing users
-    const newUsers = users.filter(user => !existingEmails.has(user.email));
-
-    // Step 3: Prepare bulk insert
-    const userDocs = newUsers.map(userData => ({
-      firstname: userData.firstname,
-      lastname: userData.firstname,
-      phonenumber: userData.phonenumber,
-      email: userData.email,
-      password: userData.password,
-      isAccountVerified: true,
-      ID_from_app: userData.ID_from_app,
-    }));
-
-    const insertedUsers = await User.insertMany(userDocs, { ordered: false });
-
-    // Step 4: Prepare verification tokens
-    const tokenDocs = insertedUsers.map(user => ({
-      userId: user._id,
-      token: crypto.randomBytes(32).toString("hex"),
-    }));
-
-    await VerificationToken.insertMany(tokenDocs, { ordered: false });
-
-    res.status(201).json({
-      message: 'Users saved successfully',
-      createdUsers: insertedUsers.map(u => u._id),
+    return res.status(201).json({
+      message: "Users saved successfully",
+      createdUsers,
     });
   } catch (err) {
-    res.status(500).json({
-      message: 'Error saving users',
+    return res.status(500).json({
+      message: "Error saving users",
       error: err.message,
     });
   }
-});
+}
+);

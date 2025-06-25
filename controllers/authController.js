@@ -53,12 +53,14 @@ module.exports.registerUserCtrl = asyncHandler(async (req, res) => {
   });
   await verifictionToken.save();
 
-  // Send OTP via email
   const htmlTemplate = `
-    <div>
-      <p>Your OTP is: <strong>${otp}</strong></p>
-      <p>Please use this OTP to verify your account.</p>
-    </div>`;
+  <div style="font-family: Arial, sans-serif; line-height:1.5;">
+    <h2>Hello ${req.body.username + req.body.lastname || ""} 👋,</h2>
+    <p>Here is your verification code:</p>
+    <p style="font-size: 24px; font-weight: bold;">${otp}</p>
+    <p>This code is valid for 10 minutes.</p>
+  </div>
+`;
 
   await sendEmail(user.email, "Your OTP Code", htmlTemplate);
   res.status(201).json({

@@ -11,7 +11,7 @@ router.post("/reset-password-link", sendResetPasswordLinkCtrl);
 
 // verify OTP to reset password
 // /api/password/VerifyOTP
-router.get("/verifyOTP", verifyOtpCtrl);
+router.post("/reset-password", resetPasswordCtrl);
 
 // /api/password/reset-password/:userId/:token
 // router

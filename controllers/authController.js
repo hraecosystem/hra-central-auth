@@ -67,7 +67,7 @@ module.exports.registerUserCtrl = asyncHandler(async (req, res) => {
     message: "Check your email for OTP to verify your account",
     userId: user._id,
     token: verifictionToken.token,
-    // otp: otp
+    otp: otp,
   });
 });
 /**-----------------------------------------------
@@ -97,11 +97,13 @@ module.exports.verifyOtpUserAccountCtrl = asyncHandler(async (req, res) => {
   const verificationToken = await VerificationToken.findOne({
     userId: user._id,
   });
-
   if (!verificationToken) {
     return res.status(400).json({ message: "Invalid OTP or token." });
   }
-
+  const truOTp = await compare(otp, verificationToken.otp);
+  if (!truOTp) {
+    return res.status(400).json({ message: "Invalid OTP ." });
+  }
   // Mark user as verified
   user.isAccountVerified = true;
   user.otp = otp;
@@ -180,7 +182,10 @@ module.exports.loginUserCtrl = asyncHandler(async (req, res) => {
   }
 
   // 3. Verify password match
-  const isPasswordMatch = await bcrypt.compare(req.body.password, user.password);
+  const isPasswordMatch = await bcrypt.compare(
+    req.body.password,
+    user.password
+  );
   if (!isPasswordMatch) {
     return res.status(400).json({ message: "Invalid email or password" });
   }
@@ -188,7 +193,9 @@ module.exports.loginUserCtrl = asyncHandler(async (req, res) => {
   // 4. Check if user email is verified
   if (!user.isAccountVerified) {
     // Check if there’s an existing verification token
-    let verificationToken = await VerificationToken.findOne({ userId: user._id });
+    let verificationToken = await VerificationToken.findOne({
+      userId: user._id,
+    });
 
     if (!verificationToken) {
       // Create new verification token and save
@@ -200,7 +207,8 @@ module.exports.loginUserCtrl = asyncHandler(async (req, res) => {
     }
 
     return res.status(403).json({
-      message: "Your account is not verified. Please check your email to verify your account.",
+      message:
+        "Your account is not verified. Please check your email to verify your account.",
     });
   }
 

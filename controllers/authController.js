@@ -49,7 +49,7 @@ module.exports.registerUserCtrl = asyncHandler(async (req, res) => {
   const verifictionToken = new VerificationToken({
     userId: user._id,
     token: crypto.randomBytes(32).toString("hex"),
-    // otp: otp,
+    otp: otp,
   });
   await verifictionToken.save();
 

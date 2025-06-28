@@ -31,8 +31,10 @@ module.exports.registerUserCtrl = asyncHandler(async (req, res) => {
 
   // hashing the password
   const salt = await bcrypt.genSalt(10);
+
   const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
   // Creating new User & save it toDB
   user = new User({
     firstname: req.body.firstname,
@@ -40,10 +42,9 @@ module.exports.registerUserCtrl = asyncHandler(async (req, res) => {
     phonenumber: req.body.phonenumber,
     email: req.body.email,
     password: hashedPassword,
+    otp: otp,
   });
   await user.save();
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   // Creating new VerificationToken & save it toDB
   const verifictionToken = new VerificationToken({
@@ -89,6 +90,8 @@ module.exports.verifyOtpUserAccountCtrl = asyncHandler(async (req, res) => {
 
   // Find user by email (not by user.email, which was undefined)
   const user = await User.findOne({ email });
+  
+
   if (!user) {
     return res.status(400).json({ message: "User not found." });
   }
@@ -97,16 +100,18 @@ module.exports.verifyOtpUserAccountCtrl = asyncHandler(async (req, res) => {
   const verificationToken = await VerificationToken.findOne({
     userId: user._id,
   });
+
   if (!verificationToken) {
     return res.status(400).json({ message: "Invalid OTP or token." });
   }
-  const truOTp = await compare(otp, verificationToken.otp);
+  const truOTp = +otp === +verificationToken.otp;
   if (!truOTp) {
     return res.status(400).json({ message: "Invalid OTP ." });
   }
   // Mark user as verified
   user.isAccountVerified = true;
   user.otp = otp;
+  
   await user.save();
 
   // Remove the used verification token
